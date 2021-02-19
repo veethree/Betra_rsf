@@ -1,95 +1,152 @@
 // ==UserScript==
-// @name         Betra_RSF_lite
-// @namespace    http://veethreedev.pythonanywhere.com/
-// @version      0.5
-// @description  Betra RSF.LITE
+// @name         Betra_RSF
+// @version      1.2
+// @description  Betra RSF
 // @author       veethreedev
 // @match        https://rsf.is/markadir/limmidaprentun*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @require      http://code.jquery.com/jquery-latest.js
-// @downloadURL  http://veethreedev.pythonanywhere.com/betra_rsf
+// @downloadURL  https://raw.githubusercontent.com/veethree/Betra_rsf/master/betra_rsf.js
 // ==/UserScript==
 
 // GLOBALS
-var BATAR = []
-var SELECTED = 0
-var CURRENT_LIST = []
-var CURRENT_SELECTED = 0
-var hide_printed = false
-var titleColor = "rgb(46, 123, 179)";
-var atnColor = "rgb(217, 233, 255)";
+var BOATS = []; // Used for replacing boat ID's with names
+var SELECTED_COUNT = 0; // Number of currently selected lots
 
-var KAUPANDA_NR = 5;
-var KAUPANDA_NAFN = 6;
-var BATUR_NAFN = 7;
-var BATUR_NR = 8
-var TEGUNG = 9;
-var STÆRÐ = 10;
-var ALDUR = 11;
+// Key bindings
+var SELECT_TUBID = "k";
+var SELECT_OLD = "o";
+var REFRESH = "r";
+var PRINT = "m";
+var SEARCH = "s";
+var BACK = "Escape";
+var SELECT_NONE = "z";
+var SELECT_ALL = "a";
 
-// KEYS
-var NEXT_ITEM = "ArrowDown"
-var PREV_ITEM = "ArrowUp" 
+// Styling
+var selectedClasses = ["alert-info"]
 
-// Search term for selecting any not new lots
-var OLD_SEARCH_TERM = "1-dags,0-1 dags,1-2 daga,1-3 daga,1-4 daga,1-5 daga,1-6 daga,1-7 daga,1-8 daga,1-9 daga,2 daga"
+// Page elements to hide
+var elementsToHide = [
+	"#lot-id-between",
+	"#lots-between",
+	"#rsf-form-row > form > div:nth-child(10)",
+	"#rsf-form-row > form > div:nth-child(8)",
+	"#rsf-form-row > form > div:nth-child(7)",
+	"#rsf-form-row > form > div:nth-child(6)",
+	"#submit-container > div:nth-child(7)",
+	"#submit-container > div:nth-child(8)",
+	"#submit-container > div:nth-child(9)",
+	"#submit-container > div:nth-child(6)"
+]
 
-// Creats BRSF's UI
+// Table columns to hide
+var columnsToHide = [0, 10, 11, 12, 13];
+
+//Creates Betra_RSF's UI
 function createUI() {
+	// Title
     $("<div id='BRSF' class='container'></div>").insertAfter(".clearfix");
-    $("#BRSF").append("<h4 style='text-align: center; color: " + titleColor + ";'>-    Betra RSF    -</h4>");
+    //$("#BRSF").append("<p class='lead text-center text-success'>-    Betra RSF    -</p>");
 
-    $("#BRSF").append("<a id='select_tub_id' class='btn btn-info' style='font-size: 14px'}>Velja stæður með karanúmerum</a>   ");
-    $("#BRSF").append("<a id='select_age' class='btn btn-default' style='font-size: 14px'}>Velja 1-dags stæður</a>");
+    // Buttons
+    $("#BRSF").append("<hr><a id='select_tub_id' class='btn btn-success d-inline'}>Velja stæður með karanúmerum</a>");
+    $("#BRSF").append("  <a id='select_age' class='btn btn-success d-inline'}>Velja 1-dags stæður</a>");
 
-    $("#BRSF").append("<input class='pull-right' type=text id='search_bar' autocomplete='off' placeholder='Leita' style='font-size: 18px; width: 30%'}>");
+    // Unhide unwanted elements button
+    $("#rsf-form-row > form > div:nth-child(5)").append("<a id='unhide_elements' class='btn btn-outline-primary float-left' style='font-size: 14px'}>Sýna allt</a>")
 
-    $("#BRSF").append("<hr><div class='form-group submit-checkbox'><div><input type='checkbox' id='select_printed'>");
+    // Search bar
+    $("#BRSF").append("<input class='pull-right' type=text id='search_bar' autocomplete='off' placeholder='Velja kaupanda' style='font-size: 18px; width: 20%'}>");
+
+    // Select printed checkbox
+    $("#BRSF").append("<br><div class='form-group submit-checkbox'><div><input type='checkbox' id='select_printed'>");
     $("#BRSF").append("<label for='select_printed' class='checkbox-inline'>Veja prentaðar stæður?</label></div></div>");
 
+    // Hide printed checkbox
     $("#BRSF").append("<div class='form-group submit-checkbox'><div><input type='checkbox' id='hide_printed'>");
     $("#BRSF").append("<label for='hide_printed' class='checkbox-inline'>Fela prentaðar stæður?</label></div></div>");
 
+    // Show ship names checkbox
     $("#BRSF").append("<div class='form-group submit-checkbox'><div><input type='checkbox' id='show_names'>");
     $("#BRSF").append("<label for='show_names' class='checkbox-inline'>Sýna nöfn á bátum?</label></div></div>");
 
-    $("#rsf-form-row").append("<br><p id='notification' style='font-size: 16px; color: " + titleColor + "; text-align: center'}></p>");
+    // Selected lots counter
+    $("#rsf-form-row").append("<br><p class='text-center text-info lead' id='selected_count'}></p>");
+
+    // Unhide hidden table rows link
+    $("tfoot").append("<a id='unhide_table' class='btn btn-outline-primary float-left' style='font-size: 14px'}>Sýna allt</a>");
+
+    // Key binding legend
+    $("#wrap").append("<hr><div class='alert alert-info'><p class='text-center text-info font-weight-bold' id='selected_count'}><strong>BETRA RSF Takkar</strong><br>P: Prenta<br>R: Endurhlaða<br>K: Velja stæður með karanúmerum<br>O: Velja +1-dags stæður<br>Z: Velja ekkert</p></div>");
 }
 
-// Sets the notification text
-function sprint(msg) {
-    $("#notification").text(msg);
-    //$("#notification").fadeIn("fast");
-    //clearTimeout();
-    //setTimeout(clearSprint, 5000);
+// Populates the BOATS table with the boats in the current table
+// The index is the boats ID and the value is the name
+function makeBoatList() {
+    var table = getTableData();
+    BOATS = [];
+	for (var i=0; i < table[0].length; i ++) {
+        var id = table[0][i][8];
+        var name = table[0][i][7];
+        BOATS[id] = name;
+    }
 }
 
-// Clears the notification text
-function clearSprint() {
-    $("#notification").text("");
-    //$("#notification").fadeOut("fast");
+// Replaces the ship ID's in the table with their names
+function showNames() {
+    BOATS.forEach(function(e, i) {
+        $("td").each(function() {
+            if ($(this).text() == i) {
+                $(this).text(e + " (" + i + ")");
+            }
+        } );
+    } );
 }
 
-// Unchecks all lots
-function uncheckAll() {
-    $("#check_lots").prop("checked", false);
-    $(".lot_checkbox").each(function(i, e) {
-        e.checked = false;
+// Reverts the change "showNames" made
+function hideNames() {
+    BOATS.forEach(function(e, i) {
+        $("td").each(function() {
+            if ($(this).text() == e + " (" + i + ")") {
+                $(this).text(i);
+            }
+        } );
+    } );
+}
+
+// Gets all the data from the lot table and puts it into an array
+function getTableData() {
+    var res = [[],[]];
+    $("tr[data-command]").each(function(index, element) {
+        var data = $(this).attr("data-command");
+        var split_data = data.split("||");
+        res[1].push($(this));
+        res[0].push(split_data);
     });
-    SELECTED = 0;
+    return res
 }
 
-// Counts currently checked lots
-function countChecked() {
-    //$("#check_lots").prop("checked", false);
-    var count = 0;
-    $(".lot_checkbox").each(function(i, e) {
-        if (e.checked) {
-            count ++;
-        }
-    });
-    SELECTED = count;
+// Updates selected lot counter
+function updateCount() {
+	$("#selected_count").text("Valdar Stæður: " + SELECTED_COUNT)
+}
+
+// Hides a column in the lot table
+function hideColumn(id) {
+    $("[id^=tr_] :nth-child(" + id + ")").each(function(index, val) {
+        $(val).hide();
+    })
+    $("thead :nth-child(" + id + ")").hide()
+}
+
+// Shows a hidden column in the lot table
+function showColumn(id) {
+    $("[id^=tr_] :nth-child(" + id + ")").each(function(index, val) {
+        $(val).show();
+    })
+    $("thead :nth-child(" + id + ")").show()
 }
 
 // Hides printed lots
@@ -102,77 +159,141 @@ function showPrinted() {
     $(".printed").show();
 }
 
-// Unchecks all printed lots
-function uncheckPrinted() {
-    var count = SELECTED;
-    $("#check_lots").prop("checked", false);
-    $("tr[data-command]").each(function(index, element) {
-        if ($(this).hasClass("printed")) {
-            $(this).find(".lot_checkbox").prop("checked", false);
-            count = count - 1;
+// Hides unwanted page elements and makes a few modifications to the page
+// ****The page modifications should be moved to their own function!
+function hideUnwantedElements() {
+	for (var i=0; i < elementsToHide.length; i++) {
+		$(elementsToHide[i]).hide();
+	}
+
+	// Modifies the "Sækja færslur" button
+	$("#submit-container > button").addClass("btn-lg")
+	$("#submit-container > button").addClass("btn-block")
+    // Modies the lots table
+    hideTableItems();
+    $("table").each(function() {
+        $(this).removeClass("table-striped");
+        $(this).addClass("table-bordered");
+    });
+}
+
+// Shows unwanted elements
+function showUnwantedElements() {
+	for (var i=0; i < elementsToHide.length; i++) {
+		$(elementsToHide[i]).show();
+    }
+}
+
+// Hides the table columns specified in the "columnsToHide" array
+function hideTableItems() {
+    for (var i=0; i < columnsToHide.length; i++) {
+        hideColumn(columnsToHide[i]);
+    }
+}
+
+// Reverts the change "hideTableItems()" made
+function showTableItems() {
+    for (var i=0; i < columnsToHide.length; i++) {
+        showColumn(columnsToHide[i]);
+    }
+}
+
+// Unchecks all rows
+function uncheckAll() {
+    SELECTED_COUNT = 0;
+    var table = getTableData();
+    for (var i=0; i < table[1].length; i++) {
+        selectedClasses.forEach(function(item) {
+            $(table[1][i]).removeClass(item);
+        })
+        $(table[1][i]).find(".lot_checkbox").prop("checked", false);
+    }
+    updateCount();
+}
+
+function checkAll() {
+    SELECTED_COUNT = 0;
+    var table = getTableData();
+    for (var i=0; i < table[1].length; i++) {
+        selectedClasses.forEach(function(item) {
+            $(table[1][i]).addClass(item);
+        })
+        $(table[1][i]).find(".lot_checkbox").prop("checked", true);
+    }
+    updateCount();
+}
+
+// Checks a specific row
+function checkRow(id) {
+	var table = getTableData();
+	if (table[1][id].hasClass("printed")) {
+        if (GM_getValue("select_printed")) {
+		    $(table[1][id]).find(".lot_checkbox").prop("checked", true);
+            selectedClasses.forEach(function(item) {
+                $(table[1][id]).addClass(item);
+            })
+            SELECTED_COUNT += 1;
+    }
+} else {
+    $(table[1][id]).find(".lot_checkbox").prop("checked", true);
+    selectedClasses.forEach(function(item) {
+        $(table[1][id]).addClass(item);
+    })
+    SELECTED_COUNT += 1;
+}
+}
+
+// Row selector functions:
+// Select all lots with tub ID's
+function selectById() {
+uncheckAll();
+SELECTED_COUNT = 0;
+	var table = getTableData();
+	for (var i=0; i < table[0].length; i ++) {
+        var row = table[0][i];
+        var element = table[1][i];
+        if (row[4] !== "") {
+        	checkRow(i);
         }
-    });
-    countChecked();
+    }
+    updateCount();
 }
 
-// Replaces ship ID's with names
-function replaceID() {
-    BATAR.forEach(function(element, index) {
-        $("td").each(function() {
-            if ( $(this).text() == index ) {
-                $(this).text(element + " (" + index + ")");
-            }
-        })
-    })
+// Selects all non-new lots
+function selectByAge() {
+	uncheckAll();
+	SELECTED_COUNT = 0;
+	var table = getTableData();
+	for (var i=0; i < table[0].length; i ++) {
+        var row = table[0][i];
+        var element = table[1][i];
+        if (row[11] !== "Nýr") {
+        	checkRow(i);
+        }
+    }
+    updateCount();
 }
 
-// Replaces ship names with ID's
-function replaceNames() {
-    BATAR.forEach(function(element, index) {
-        $("td").each(function() {
-            if ( $(this).text() == element + " (" + index + ")" ) {
-                $(this).text(index);
-            }
-        })
-    })
+function selectByCustomerID(customer_id) {
+    uncheckAll();
+    SELECTED_COUNT = 0;
+    var table = getTableData();
+
+    for (var i=0; i < table[0].length; i ++) {
+        var row = table[0][i]
+        var element = table[1][i]
+        var match = false;
+        if (row[5] == customer_id.trim()) {
+            checkRow(i)
+        }
+    }
+    updateCount();
 }
 
-// Gets all the data from the table and puts it into an array
-// Used for the search  function
-function getTableData() {
-    var res = [[],[]];
-    $("tr[data-command]").each(function(index, element) {
-        var data = $(this).attr("data-command");
-        var split_data = data.split("||");
-        res[1].push($(this));
-        res[0].push(split_data);
-        BATAR[split_data[BATUR_NR]] = split_data[BATUR_NAFN]
-    });
-    return res
-}
-
-// Selects all lots with tub id's
-function selectByTubId() {
-    var count = 0;
-    clearStyle();
-    CURRENT_LIST = []
-    $(".glyphicon.glyphicon-info-sign").each(function(index) {
-        var parent = $(this).parent().parent();
-        parent.find(":input").prop("checked", true);
-        parent.css("background-color", atnColor);
-        count ++
-        CURRENT_LIST.push("#" + $(parent).attr("id"))
-    });
-    countChecked();
-    CURRENT_SELECTED = 0
-    gotoElement(CURRENT_LIST[CURRENT_SELECTED]);
-}   
-
-// Selects lots based on a search term. Searches any value within the array returned by 'getTableData'.
-// if search_term has a CSV format ("x,y,z"), It will match all values.
-// The CSV values are also trimmed, So a search term like "x, y, z" is possible.
-// search_term is not case sensitive.
+// Selects by search term
 function selectBySearch(search_term) {
+	uncheckAll();
+	SELECTED_COUNT = 0;
     var table = getTableData();
     var split_search_term = search_term.split(",");
 
@@ -186,91 +307,76 @@ function selectBySearch(search_term) {
     }
     search_term = search_term.toLowerCase();
 
-    var count = 0;
     $("#search_bar").val("");
     for (var i=0; i < table[0].length; i ++) {
         var row = table[0][i]
         var element = table[1][i]
         var match = false;
-        element.css("background-color", "");
         for (var j=0; j < row.length; j ++) {
             if (typeof(row[j]) == "string") {
                 if (row[j].toLowerCase().search(search_term) !== -1) {
-                    match = true;
+                    checkRow(i)
                     break
                 }
             }
         }
-        if (match) {
-            element.find(".lot_checkbox").prop("checked", true);
-            element.css("background-color", atnColor);
-            count ++;
-        }
     }
-    countChecked();
+    updateCount();
 }
 
-function clearStyle() {
-    var table = getTableData();
-    for (var i=0; i < table[0].length; i ++) {
-        var element = table[1][i].css("background-color", "");
-        }
-}
-
-function highlightAll() {
-    var table = getTableData();
-    for (var i=0; i < table[0].length; i ++) {
-        var element = table[1][i].css("background-color", atnColor);
-        }
-}
-
-function gotoElement(selector) {
-    location.href = "#";
-    location.href = selector;
-}
-
-function clearList() {
-
-}
-
-
+// Document load
 $(document).ready(function() {
-    //Init
+    makeBoatList();
+	hideUnwantedElements();
     createUI();
-    uncheckAll();
-    sprint("Valdar stæður: " + SELECTED);
-    getTableData() // This needs to be called to construct the "BATAR" array used to replaces ship id's with names.
+    uncheckAll()
+    // Loading GM values
     $("#select_printed").prop("checked", GM_getValue("select_printed"));
     $("#hide_printed").prop("checked", GM_getValue("hide_printed"));
     $("#show_names").prop("checked", GM_getValue("show_names"));
+
+    // Page modifications based on checkbox values
+    // ****This should be put into a "modifyPage" function!
     if ($("#hide_printed").prop("checked")) { hidePrinted() }
+    if ($("#show_names").prop("checked")) { showNames() }
 
-    // Click events
-    $("#select_tub_id").click(function() {
-        var select_printed = $("#select_printed").prop("checked");
-        uncheckAll();
-        selectByTubId();
-        if (!select_printed) { uncheckPrinted() };
-        sprint("Valdar stæður: " + SELECTED);
-    });
-
-    $("#select_age").click(function() {
-        var select_printed = $("#select_printed").prop("checked");
-        uncheckAll();
-        selectBySearch(OLD_SEARCH_TERM);
-        if (!select_printed) { uncheckPrinted() };
-        sprint("Valdar stæður: " + SELECTED);
-    });
-
-    $("#select_printed").click(function() {
-        GM_setValue("select_printed", $(this).prop("checked"));
+    // Unhide link
+    $("#unhide_elements").click(function() {
+    	showUnwantedElements();
+    	$("#unhide_elements").hide();
     })
 
+    // Unhide link
+    $("#unhide_table").click(function() {
+    	showTableItems();
+    	$("#unhide_table").hide();
+    })
+
+    // Select by ID button
+    $("#select_tub_id").click(function() {
+    	selectById();
+    })
+
+     // Select by Age button
+    $("#select_age").click(function() {
+    	selectByAge();
+    })
+
+    // Select by search keypress event
+    $("#search_bar").keypress(function(event) {
+        //var select_printed = $("#select_printed").prop("checked");
+        if (event.key == "Enter") {
+            event.preventDefault()
+            selectByCustomerID($("#search_bar").val());
+            $("#search_bar").val("");
+        }
+    })
+
+    // Checkboxes
     $("#hide_printed").click(function() {
         if ($(this).prop("checked") == true) {
-            hide_printed = setInterval(function() { hidePrinted()}, 100);
+            hidePrinted();
         } else {
-            clearInterval(hide_printed);
             showPrinted();
         }
         GM_setValue("hide_printed", $(this).prop("checked"));
@@ -278,78 +384,70 @@ $(document).ready(function() {
 
     $("#show_names").click(function() {
         if ($(this).prop("checked") == true) {
-            replaceID();
+            showNames();
         } else {
-           replaceNames();
+            hideNames();
         }
         GM_setValue("show_names", $(this).prop("checked"));
     })
 
-    $(".lot_checkbox").click(function() {
-        var parent = $(this).parent().parent();
-        if ($(this).prop("checked") == true) {
-            parent.css("background-color", atnColor);
-        } else {
-           parent.css("background-color", "");
-        }
+    $("#select_printed").click(function() {
+        GM_setValue("select_printed", $(this).prop("checked"));
     })
 
-    $("#check_lots").click(function() {
-        if ($(this).prop("checked") == true) {
-            highlightAll()
-        } else {
-            clearStyle()
-        }
-    })
-
+    // Makes the entire row clickable
+    // ****Also makes the checkboxes not function!
     $("tbody tr").click(function() {
+        var element = this;
         var checkBox = $(this).find(".lot_checkbox");
         if (checkBox.prop("checked") == true) {
             $(this).find(":input").prop("checked", false);
-            $(this).css("background-color", "");
+            selectedClasses.forEach(function(item) {
+                $(element).removeClass(item);
+            })
         } else {
             $(this).find(":input").prop("checked", true);
-            $(this).css("background-color", atnColor);
-        }
-
-        console.log("Lot clicked!");
-    })
-
-    // Keypress events
-    $("#search_bar").keypress(function(event) {
-        var select_printed = $("#select_printed").prop("checked");
-        if (event.which == 13) {
-            event.preventDefault()
-            uncheckAll();
-            selectBySearch($("#search_bar").val());
-            if (!select_printed) { uncheckPrinted() };
-            sprint("Valdar stæður: " + SELECTED);
+            selectedClasses.forEach(function(item) {
+                $(element).addClass(item);
+            })
         }
     })
-
-    // Replaces the ship id's with ship names in the table
-    if (GM_getValue("show_names")) {
-        replaceID();
-    }
 });
 
+// Key events
 $(document).keydown(function(event) {
-    if (event.altKey && event.key == NEXT_ITEM) {
-        CURRENT_SELECTED += 1
-        gotoElement(CURRENT_LIST[CURRENT_SELECTED]);
-        console.log(event.code)
-    }
+    if (document.activeElement.nodeName == "BODY") {
+		if (event.key == REFRESH) {
+            $("#submit-container > button").click();
+		}
 
-    if (event.altKey && event.key == PREV_ITEM) {
-        CURRENT_SELECTED -= 1
-        gotoElement(CURRENT_LIST[CURRENT_SELECTED]); 
-        console.log(CURRENT_SELECTED)
-    }
+		if (event.key == SELECT_TUBID) {
+			selectById();
+		}
+
+		if (event.key == SELECT_OLD) {
+			selectByAge();
+		}
+
+		if (event.key == PRINT) {
+			$("#print_lots").click()
+		}
+
+		if (event.key == SEARCH) {
+			event.preventDefault();
+			$("#search_bar").focus();
+		}
+
+		if (event.key == SELECT_NONE) {
+            uncheckAll();
+		}
+
+        if (event.key == SELECT_ALL) {
+            checkAll();
+		}
+	} else {
+		if (event.key == BACK) {
+			$("#search_bar").blur();
+		}
+	}
 })
-
-
-
-
-
-
-
