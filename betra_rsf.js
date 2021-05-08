@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Betra_RSF
-// @version      1.2
+// @version      1.3
 // @description  Betra RSF
 // @author       veethreedev
 // @match        https://rsf.is/markadir/limmidaprentun*
@@ -13,13 +13,15 @@
 // GLOBALS
 var BOATS = []; // Used for replacing boat ID's with names
 var SELECTED_COUNT = 0; // Number of currently selected lots
+var LAST_PRINT = []
 
 // Key bindings
 var SELECT_TUBID = "k";
 var SELECT_OLD = "o";
+var SELECT_LAST_PRINT = "s"
 var REFRESH = "r";
 var PRINT = "m";
-var SEARCH = "s";
+var SEARCH = "q";
 var BACK = "Escape";
 var SELECT_NONE = "z";
 var SELECT_ALL = "a";
@@ -223,6 +225,30 @@ function checkAll() {
     updateCount();
 }
 
+function checkLastPrint() {
+    uncheckAll()
+    SELECTED_COUNT = 0;
+    var table = LAST_PRINT
+    for (var i=0; i < table.length; i++) {
+        selectedClasses.forEach(function(item) {
+            $(table[i]).addClass(item);
+        })
+        $(table[i]).find(".lot_checkbox").prop("checked", true);
+    }
+    updateCount();
+}
+
+function getCheckedLots() {
+    var lots = []
+    var table = getTableData();
+    for (var i=0; i < table[1].length; i++) {
+        if ($(table[1][i]).find(".lot_checkbox").prop("checked")) {
+            lots.push(table[1][i])
+        }
+    }
+    return lots
+}
+
 // Checks a specific row
 function checkRow(id) {
 	var table = getTableData();
@@ -246,8 +272,8 @@ function checkRow(id) {
 // Row selector functions:
 // Select all lots with tub ID's
 function selectById() {
-uncheckAll();
-SELECTED_COUNT = 0;
+    uncheckAll();
+    SELECTED_COUNT = 0;
 	var table = getTableData();
 	for (var i=0; i < table[0].length; i ++) {
         var row = table[0][i];
@@ -430,6 +456,7 @@ $(document).keydown(function(event) {
 		}
 
 		if (event.key == PRINT) {
+            LAST_PRINT = getCheckedLots()
 			$("#print_lots").click()
 		}
 
@@ -445,9 +472,14 @@ $(document).keydown(function(event) {
         if (event.key == SELECT_ALL) {
             checkAll();
 		}
+
+        if (event.key == SELECT_LAST_PRINT) {
+            checkLastPrint()
+        }
 	} else {
 		if (event.key == BACK) {
 			$("#search_bar").blur();
 		}
 	}
 })
+
