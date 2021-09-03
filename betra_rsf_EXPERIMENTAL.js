@@ -1,5 +1,5 @@
  // ==UserScript==
-// @name         Betra_RSF
+// @name         Betra_RSF_EXPERIMENTAL
 // @version      2.0
 // @description  Betra RSF (EXPERIMENTAL)
 // @author       veethreedev
@@ -7,7 +7,7 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @require      http://code.jquery.com/jquery-latest.js
-// @downloadURL  https://raw.githubusercontent.com/veethree/Betra_rsf/master/betra_rsf.js
+// @downloadURL  https://raw.githubusercontent.com/veethree/Betra_rsf/master/betra_rsf_EXPERIMENTAL.js
 // ==/UserScript==
 
 // Elements with the following Selectors will be hidden once the page loads.
