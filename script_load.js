@@ -1,11 +1,8 @@
 // ==UserScript==
-// @name         Betra_RSF
-// @version      1.3
-// @description  Betra RSF
+// @name         Script Loader
+// @version      1.
+// @description  Loads a script from the disk
 // @author       veethreedev
 // @match        https://rsf.is/markadir/limmidaprentun*
-// @grant        GM_setValue
-// @grant        GM_getValue
-// @require      file:///home/pawel/Documents/javascript/Betra_rsf/betra_rsf.js
-// @downloadURL  https://raw.githubusercontent.com/veethree/Betra_rsf/master/betra_rsf.js
+// @require      file:///home/pawel/Documents/js/Betra_rsf/betra_rsf_EXPERIMENTAL.js
 // ==/UserScript==
