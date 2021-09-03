@@ -78,12 +78,12 @@ let search_bar = `
 <div class="form-group col-sm-4 col-md-3" style="display: block;">
   <label class="text-info" for="search_bar">Kaupandi</label>
 
-  <input type="text" id="search_bar" placeholder="Kaupandi" class="form-control autocomplete='off'"></input>
+  <input type="number" id="search_bar" placeholder="Kaupandi" class="form-control autocomplete='off'"></input>
 </div>
 `
 
 let show_hidden_elements = "<a id='unhide_elements' class='btn btn-outline-primary float-left' style='font-size: 14px'}>Sýna allt</a>"
-let alert_bar = "<div id='betra_alert' class='alert alert-success'></div>"
+let alert_bar = "<div id='betra_alert' class=''></div>"
 
 // This array will be populated with "construct_data_array" once the page is loaded.
 let data = {}
@@ -104,7 +104,7 @@ function construct_data_array() {
 
 // ALERT
 // 'text' needs to be a <p> element or shit goes wrong
-function alert(text, _class="alert-success") {
+function alert(text, _class="alert-info") {
     clear_alert()
     $("#betra_alert").removeClass()
     $("#betra_alert").addClass("alert")
@@ -201,12 +201,13 @@ function select_by_buyer(buyer_id) {
             check_lot(index, true, true)
         } 
     })
-    let _class = "alert-success"
+    let _class = "alert-info"
     let out = `<p class="lead"><b>Kaupandi ${buyer_id} kaupir efitfarandi stæður:</b></p>`
     selected_lots.forEach(function(lot, index) {
         let c = "text-primary"
+        if (lot["fish_age"] != "Nýr") { c="text-success" } 
         if ($(lot.element).hasClass("printed")) { c="text-muted"} 
-        out = out + `<p class=${c}><b>${lot["fish_type"]}</b> af <b>${lot["ship_name"]}</b>. <b>${lot["fish_weight"]}</b>, <b>${lot["tub_count"]}</b> eining/ar</p>`
+        out = out + `<p class=${c}><b>${lot["lot_id"]}. ${lot["fish_type"]}</b> af <b>${lot["ship_name"]}</b>. <b>${lot["fish_weight"]}</b>, <b>${lot["tub_count"]}</b> eining/ar.</p>`
     })
 
     if (selected_lots.length < 1) {
@@ -309,6 +310,13 @@ $(document).ready(function() {
         if (event.key == "Enter") {
             event.preventDefault()
             select_by_buyer($(this).val())
+            $(this).val("").blur()
+        }
+    })
+
+    $("#search_bar").keydown(function(event) {
+        //var select_printed = $("#select_printed").prop("checked");
+        if (event.key == "Escape") {
             $(this).val("").blur()
         }
     })
