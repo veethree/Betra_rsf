@@ -62,7 +62,8 @@ let key = {
     refresh_page: "r",
     print_label: "m",
     select_all: "a",
-    select_none: "z"
+    select_none: "z",
+    search: "s"
 }
 
 // A list of currently selected lots
@@ -75,9 +76,9 @@ let selected_class = ["alert-info"]
 //let search_bar = "<input class='pull-left' type=text id='search_bar' autocomplete='off' placeholder='Velja kaupanda' style='width: 20%; margin-bottom: 12px'}>"
 let search_bar = `
 <div class="form-group col-sm-4 col-md-3" style="display: block;">
-  <label for="search_bar">Leita</label>
+  <label class="text-info" for="search_bar">Kaupandi</label>
 
-  <input type="text" id="search_bar" placeholder="Leita" class="form-control autocomplete='off'"></input>
+  <input type="text" id="search_bar" placeholder="Kaupandi" class="form-control autocomplete='off'"></input>
 </div>
 `
 
@@ -102,53 +103,72 @@ function construct_data_array() {
 }
 
 // ALERT
+// 'text' needs to be a <p> element or shit goes wrong
 function alert(text, _class="alert-success") {
-    $("#betra_alert").show().addClass(_class).text(text)
+    clear_alert()
+    $("#betra_alert").removeClass()
+    $("#betra_alert").addClass("alert")
+    $("#betra_alert").show().addClass(_class).append(text)
 }
 
 function clear_alert() {
-    $("#betra_alert").hide()
+    $("#betra_alert").hide().children($("p")).remove()
 }
 
+// Clears the selected_lots array
 function clear_selected_lots() {
     selected_lots = []
 }
 
+// Adds a lot to the selected_lots array
+// 'index' is the index for the lot in the data array!
 function add_selected_lot(index) {
-    
+    if (!selected_lots.includes(data[index])) {
+        selected_lots.push(data[index])
+    }
+}
+
+// Removes a lot to the selected_lots array
+// 'index' is the index for the lot in the data array!
+function remove_selected_lot(index) {
+    if (selected_lots.includes(data[index])) {
+        delete selected_lots[selected_lots.indexOf(data[index])]
+    }
+}
+
+function is_printed(index) {
+    if ($(data[index].element).hasClass("printed")) {
+        return true
+    } else { return false }
 }
 
 // Checks/unchecks the specified lot
-function check_lot(index, status) {
-    $(data[index].element).find("#transaction_id_").prop("checked", status)
-    if (status) {
-        // Adding selected class
-        selected_class.forEach(function(item) {
-            $(data[index].element).addClass(item);
-        })
-
-        // Counting
-        if (!selected_lots.includes(data[index])) {
-            selected_lots.push(data[index])
-        }
-    } else {
-        selected_class.forEach(function(item) {
-            $(data[index].element).removeClass(item);
-        })
-        // Counting
-        if (selected_lots.includes(data[index])) {
-            delete selected_lots[selected_lots.indexOf(data[index])]
+function check_lot(index, status, check_printed=false) {
+    if (!is_printed(index) || check_printed) {
+        $(data[index].element).find("#transaction_id_").prop("checked", status)
+        if (status) {
+            selected_class.forEach(function(item) {
+                $(data[index].element).addClass(item);
+            })
+            add_selected_lot(index)
+            console.log("Checked.")
+        } else {
+            selected_class.forEach(function(item) {
+                $(data[index].element).removeClass(item);
+            })
+            remove_selected_lot(index)
         }
     }
 }
 
 // Unchecks all lots
-function uncheck_all() {
+// Also clears the selected_lots table
+function uncheck_all(_clear_alert=true) {
     data.forEach(function(lot, index) {
-        check_lot(index, false)
+        check_lot(index, false, true)
     })
     clear_selected_lots()
-    clear_alert()
+    if (_clear_alert) {clear_alert()}
 }
 
 // Selects each lot that has a tub id
@@ -159,7 +179,7 @@ function select_by_tub_id() {
             check_lot(index, true)
         } 
     })
-    alert("Valdi " + selected_lots.length + " stæður með karanúmerum.")
+    alert("<p>Valdi " + selected_lots.length + " stæður með karanúmerum.</p>")
 }
 
 // Selects lots that are not new
@@ -170,7 +190,7 @@ function select_by_age() {
             check_lot(index, true)
         } 
     })
-    alert("Valdi " + selected_lots.length + " stæður sem eru 1-dags eða eldri.")
+    alert("<p>Valdi " + selected_lots.length + " stæður sem eru 1-dags eða eldri.</p>")
 }
 
 // Selects lots for a certain buyer
@@ -178,14 +198,23 @@ function select_by_buyer(buyer_id) {
     uncheck_all()
     data.forEach(function(lot, index) {
         if (lot["buyer_id"] == buyer_id) {
-            check_lot(index, true)
+            check_lot(index, true, true)
         } 
     })
-    let out = "Kaupandi " + buyer_id + " kaupir efitfarandi stæður:"
+    let _class = "alert-success"
+    let out = `<p class="lead"><b>Kaupandi ${buyer_id} kaupir efitfarandi stæður:</b></p>`
     selected_lots.forEach(function(lot, index) {
-        out = out + "\n" + lot["fish_type"] + " af " + lot["ship_name"] + ", "
+        let c = "text-primary"
+        if ($(lot.element).hasClass("printed")) { c="text-muted"} 
+        out = out + `<p class=${c}><b>${lot["fish_type"]}</b> af <b>${lot["ship_name"]}</b>. <b>${lot["fish_weight"]}</b>, <b>${lot["tub_count"]}</b> eining/ar</p>`
     })
-    alert(out)
+
+    if (selected_lots.length < 1) {
+        out = "<p><b>Kaupandi " + buyer_id + " kaupir ekkert í dag</b></p>"
+        _class = "alert-danger"
+    }
+    alert(out, _class)
+    uncheck_all(false)
 }
 
 // Hides unwanted page elements
@@ -296,13 +325,19 @@ $(document).keydown(function(event) {
             select_by_age()
         } else if (event.key == key.print_label) {
             $("#print_lots").click()
-            alert("Prenta " + selected_lots.length + " stæður.")
+            alert("<p>Prenta " + selected_lots.length + " stæður.</p>")
         } else if (event.key == key.select_all) {
+            clear_selected_lots()
             data.forEach(function(lot, index) {
                 check_lot(index, true)
+                add_selected_lot()
             })
+            alert("<p>Valdi " + selected_lots.length + " stæður.</p>")
         } else if (event.key == key.select_none) {
             uncheck_all()
+        } else if (event.key == key.search) {
+            event.preventDefault()
+            $("#search_bar").focus()
         }
     }
 })
