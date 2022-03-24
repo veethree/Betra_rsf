@@ -1,6 +1,6 @@
  // ==UserScript==
 // @name         Betra_RSF_EXPERIMENTAL
-// @version      2.0
+// @version      2.1
 // @description  Betra RSF (EXPERIMENTAL)
 // @author       veethreedev
 // @match        https://rsf.is/markadir/limmidaprentun*
@@ -63,17 +63,19 @@ let key = {
     print_label: "m",
     select_all: "a",
     select_none: "z",
-    search: "s"
+    search: "s",
+    next_lot: "ArrowDown",
+    previous_lot: "ArrowUp",
 }
 
 // A list of currently selected lots
 let selected_lots = []
+let current_selected_lot = 0
 
 // These classes will be applied to selected table rows.
 let selected_class = ["alert-info"]
 
 // Custom HTML Elements
-//let search_bar = "<input class='pull-left' type=text id='search_bar' autocomplete='off' placeholder='Velja kaupanda' style='width: 20%; margin-bottom: 12px'}>"
 let search_bar = `
 <div class="form-group col-sm-4 col-md-3" style="display: block;">
   <label class="text-info" for="search_bar">Kaupandi</label>
@@ -83,10 +85,23 @@ let search_bar = `
 `
 
 let show_hidden_elements = "<a id='unhide_elements' class='btn btn-outline-primary float-left' style='font-size: 14px'}>Sýna allt</a>"
+let open_afish = "<a id='open_afish' class='btn btn-outline-primary float-right' href='https://rsf.is/afish/kaupafaerslur' target='_blank' style='font-size: 14px'}>Opna kaupfærslur</a>"
+let open_auction = "<a id='open_afish' class='btn btn-outline-primary float-right' href='https://rsf.is/afish/frambod' target='_blank' style='font-size: 14px'}>Opna framboð</a>"
 let alert_bar = "<div id='betra_alert' class=''></div>"
 
 // This array will be populated with "construct_data_array" once the page is loaded.
 let data = {}
+
+// Thanks stack overflow
+function scrollIntoViewIfNeeded(target) { 
+    if (target.getBoundingClientRect().bottom > window.innerHeight) {
+        target.scrollIntoView(false);
+    }
+
+    if (target.getBoundingClientRect().top < 0) {
+        target.scrollIntoView();
+    } 
+}
 
 // This function parses the data-command attributes and constructs a nice key indexed array
 function construct_data_array() {
@@ -128,12 +143,20 @@ function add_selected_lot(index) {
     }
 }
 
-// Removes a lot to the selected_lots array
+// Removes a lot from the selected_lots array
 // 'index' is the index for the lot in the data array!
 function remove_selected_lot(index) {
     if (selected_lots.includes(data[index])) {
         delete selected_lots[selected_lots.indexOf(data[index])]
     }
+}
+
+// Replaces the boat id in the table with the name
+function replace_id() {
+    data.forEach(function(item, index) {
+        boat_id = item.boat_id
+        $(item.element).children().eq(4).text(item.ship_name + " (" + item.ship_id + ")")
+    })
 }
 
 function is_printed(index) {
@@ -151,7 +174,6 @@ function check_lot(index, status, check_printed=false) {
                 $(data[index].element).addClass(item);
             })
             add_selected_lot(index)
-            console.log("Checked.")
         } else {
             selected_class.forEach(function(item) {
                 $(data[index].element).removeClass(item);
@@ -256,11 +278,11 @@ function hide_table_columns() {
 $(document).ready(function() {
     // Populating data array
     data = construct_data_array()
-    console.log(data)
     // Page setup
     hide_table_columns()
     uncheck_all()
     hide_unwanted_elements()
+    replace_id()
     
     // Modifying existing elements
     $("#submit-container > button").addClass("btn-lg btn-block") // Submit button
@@ -271,6 +293,8 @@ $(document).ready(function() {
 
     // Adding custom elements
     $(search_bar).insertAfter("#lot-id-between")
+    $("#content-row").prepend(open_auction)
+    $("#content-row").prepend(open_afish)
     $("#content-row").prepend(show_hidden_elements)
     $("#content-row").prepend(alert_bar)
     $("#betra_alert").hide()
@@ -346,6 +370,28 @@ $(document).keydown(function(event) {
         } else if (event.key == key.search) {
             event.preventDefault()
             $("#search_bar").focus()
-        }
+        } //else if (event.key == key.next_lot) {
+        //     event.preventDefault()
+        //     if (!event.shiftKey) {
+        //         check_lot(current_selected_lot, false, true)
+        //     }
+        //     current_selected_lot += 1
+        //     if (current_selected_lot >= data.length - 1) {
+        //         current_selected_lot = data.length - 1
+        //     }
+        //     check_lot(current_selected_lot, true, true)
+        //     scrollIntoViewIfNeeded(data[current_selected_lot].element)
+        // } else if (event.key == key.previous_lot){
+        //     event.preventDefault()
+        //     if (!event.shiftKey) {
+        //         check_lot(current_selected_lot, false, true)
+        //     }
+        //     current_selected_lot -= 1
+        //     if (current_selected_lot < 0) {
+        //         current_selected_lot = 0
+        //     }
+        //     check_lot(current_selected_lot, true, true)
+        //     scrollIntoViewIfNeeded(data[current_selected_lot].element)
+        // }
     }
 })
