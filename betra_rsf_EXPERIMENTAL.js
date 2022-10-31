@@ -1,6 +1,6 @@
  // ==UserScript==
 // @name         Betra_RSF_EXPERIMENTAL
-// @version      2.1
+// @version      2.2
 // @description  Betra RSF (EXPERIMENTAL)
 // @author       veethreedev
 // @match        https://rsf.is/markadir/limmidaprentun*
@@ -293,10 +293,10 @@ $(document).ready(function() {
 
     // Adding custom elements
     $(search_bar).insertAfter("#lot-id-between")
-    $("#content-row").prepend(open_auction)
-    $("#content-row").prepend(open_afish)
-    $("#content-row").prepend(show_hidden_elements)
-    $("#content-row").prepend(alert_bar)
+    $("#rsf-form-row").prepend(open_auction)
+    $("#rsf-form-row").prepend(open_afish)
+    $("#rsf-form-row").prepend(show_hidden_elements)
+    $("#rsf-form-row").prepend(alert_bar)
     $("#betra_alert").hide()
     
     // Custom click events
